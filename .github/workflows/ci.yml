@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: search-services
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: search-services/go.mod
+          cache-dependency-path: search-services/go.sum
+      - run: go vet ./...
+      - run: go test -race $(go list ./... | grep -Ev 'yadro.com/course/(proto|api$|update$|words$|search$)')
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up -d --build
+      - name: Wait for API
+        run: timeout 120 sh -c 'until curl -sf localhost:28080/api/ping; do sleep 2; done'
+      - run: docker compose run --rm --entrypoint go tests test -race -v ./...
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down -v

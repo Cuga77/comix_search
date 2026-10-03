@@ -24,3 +24,6 @@ go.work
 # Mac users
 .DS_Store
 
+
+# Coverage report (make unit)
+cover.html
